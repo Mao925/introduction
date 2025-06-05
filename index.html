@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パーソナルヒストリー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            overflow-x: hidden; 
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #4a90e2; /* Primary blue */
+            border: 3px solid #ffffff;
+            z-index: 1; 
+        }
+        .timeline-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: -1px; 
+            top: calc(50% + 10px); 
+            height: calc(100% - 10px); 
+            width: 2px;
+            background-color: #cbd5e1; 
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 12px; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease; 
+        }
+        .card:hover {
+            transform: translateY(-5px) scale(1.02); 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .tag {
+            background-color: #e2e8f0; 
+            color: #4a5568; 
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .icon-blue {
+            color: #4a90e2; 
+        }
+        .section-title {
+            font-size: 2rem; 
+            font-weight: 700;
+            color: #2d3748; 
+            margin-bottom: 2.5rem; 
+            text-align: center;
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+        .section-title::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 0;
+            width: 80px;
+            height: 4px;
+            background-color: #4a90e2; 
+            border-radius: 2px;
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #4a90e2, #3182ce);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        #scrollToTopBtn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: none; 
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 50%; 
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+            z-index: 1000;
+        }
+        #scrollToTopBtn:hover {
+            background-color: #3b7cbd;
+            transform: scale(1.1);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1001; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 25px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 12px;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .gemini-button {
+            background-color: #6366f1; /* Indigo */
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.75rem; /* 12px */
+        }
+        .gemini-button:hover {
+            background-color: #4f46e5; /* Darker Indigo */
+        }
+        .loader {
+            border: 5px solid #f3f3f3; /* Light grey */
+            border-top: 5px solid #4a90e2; /* Blue */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .modal-body h4 {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+        .modal-body p {
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        .modal-body ul {
+            list-style-type: disc;
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="container mx-auto max-w-5xl">
+
+        <header class="text-center mb-16" data-aos="fade-down" data-aos-duration="1000">
+            <h1 class="text-4xl md:text-5xl font-bold gradient-text mb-4">パーソナルヒストリー</h1>
+            <p class="text-lg text-gray-600">自己成長の軌跡と未来への展望</p>
+        </header>
+
+        <!-- 基本情報 (変更なし) -->
+        <section class="mb-16">
+            <h2 class="section-title" data-aos="fade-up" data-aos-delay="100">基本情報</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="card p-6" data-aos="fade-right" data-aos-delay="200">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3"><i class="fas fa-birthday-cake icon-blue mr-2"></i>誕生日</h3>
+                    <p class="text-gray-600">2005年9月25日（19歳）</p>
+                </div>
+                <div class="card p-6" data-aos="fade-left" data-aos-delay="300">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3"><i class="fas fa-graduation-cap icon-blue mr-2"></i>学歴</h3>
+                    <p class="text-gray-600">早稲田実業学校高等部 → 早稲田大学</p>
+                </div>
+                <div class="card p-6" data-aos="fade-right" data-aos-delay="400">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3"><i class="fas fa-lightbulb icon-blue mr-2"></i>興味分野</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="tag">AI</span>
+                        <span class="tag">組織開発</span>
+                    </div>
+                </div>
+                <div class="card p-6" data-aos="fade-left" data-aos-delay="500">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3"><i class="fas fa-heart icon-blue mr-2"></i>趣味</h3>
+                     <div class="flex flex-wrap gap-2">
+                        <span class="tag">筋トレ</span>
+                        <span class="tag">読書</span>
+                    </div>
+                </div>
+                <div class="card p-6 md:col-span-2" data-aos="zoom-in-up" data-aos-delay="600">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3"><i class="fas fa-gem icon-blue mr-2"></i>価値観</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="tag">上昇志向</span>
+                        <span class="tag">情熱的</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 過去 (変更なし) -->
+        <section class="mb-16">
+            <h2 class="section-title" data-aos="fade-up">過去の道のり</h2>
+            <div class="relative pl-8 border-l-2 border-gray-300">
+                <!-- 小学生 -->
+                <div class="timeline-item mb-12 ml-4" data-aos="fade-left" data-aos-anchor-placement="top-bottom">
+                    <div class="card p-6"> 
+                        <h4 class="text-lg font-bold text-blue-600 mb-1">小学生</h4>
+                        <p class="text-sm text-gray-500 mb-2">才能の芽生えと最初の試練</p>
+                        <p class="text-gray-600 leading-relaxed">小1からクラスで頭が良いと認識されるも、他者を見下す態度から小6でいじめを経験。この悔しさをバネに中学受験に没頭し、駅伝への憧れから早稲田実業学校に合格。</p>
+                    </div>
+                </div>
+                <!-- 中学生・高校生 -->
+                <div class="timeline-item mb-12 ml-4" data-aos="fade-left" data-aos-anchor-placement="top-bottom" data-aos-delay="100">
+                     <div class="card p-6">
+                        <h4 class="text-lg font-bold text-blue-600 mb-1">中学生・高校生</h4>
+                        <p class="text-sm text-gray-500 mb-2">人間不信と自己探求</p>
+                        <p class="text-gray-600 leading-relaxed">いじめの後遺症で人間不信に。クラスで孤立し、「冷笑界隈」を牽引。運動能力や学力で他者を判断し、コミュニケーションを拒絶。文化祭準備日に逃亡するなどのエピソードも。一方で駅伝には真摯に取り組み、勉強も要領よくこなしクラス上位の成績を維持。</p>
+                    </div>
+                </div>
+                <!-- 大学1年生（前期） -->
+                <div class="timeline-item mb-12 ml-4" data-aos="fade-left" data-aos-anchor-placement="top-bottom" data-aos-delay="200">
+                    <div class="card p-6">
+                        <h4 class="text-lg font-bold text-blue-600 mb-1">大学1年生 (2024/4 ~ 2024/9)</h4>
+                        <p class="text-sm text-gray-500 mb-2">新たな目標設定と挫折</p>
+                        <p class="text-gray-600 leading-relaxed">駅伝を辞め、高年収と独りでできるという理由から公認会計士を目指すも、4～5ヶ月で断念。その後、1ヶ月の営業インターンを経て、3ヶ月間の無気力期間を過ごす。</p>
+                    </div>
+                </div>
+                <!-- 大学1年生（後期） -->
+                <div class="timeline-item ml-4" data-aos="fade-left" data-aos-anchor-placement="top-bottom" data-aos-delay="300">
+                    <div class="card p-6">
+                        <h4 class="text-lg font-bold text-blue-600 mb-1">大学1年生 (2024/10 ~ 2025/3)</h4>
+                        <p class="text-sm text-gray-500 mb-2">自己変革と成長</p>
+                        <p class="text-gray-600 leading-relaxed">長期インターンとマッチングアプリを開始し、ビジネスと恋愛の両面で自己変革を達成。筋トレの成果も現れ始める。2025年1月には一時的な停滞を経験するも、2月に初めて彼女ができ、19年間の非モテ生活に終止符。3月には新規領域への挑戦としてBusiness Contest KING実行委員会に入会。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 現在 (変更なし) -->
+        <section class="mb-16">
+            <h2 class="section-title" data-aos="fade-up">現在の活動</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="card p-6" data-aos="flip-left" data-aos-easing="ease-out-cubic" data-aos-duration="1000">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3"><i class="fas fa-briefcase icon-blue mr-2"></i>長期インターン</h3>
+                    <div class="mb-4">
+                        <h4 class="font-medium text-blue-600">DX推進:</h4>
+                        <p class="text-gray-600">Web広告領域のDXを推進。データ分析から施策実行まで、業務の無駄を削減。</p>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-blue-600">組織開発:</h4>
+                        <p class="text-gray-600">心理的安全性を重視。研修では他者との違いを通じて自己理解を深めるワークを実施。</p>
+                    </div>
+                </div>
+                <div class="card p-6" data-aos="flip-right" data-aos-easing="ease-out-cubic" data-aos-duration="1000" data-aos-delay="200">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3"><i class="fas fa-users icon-blue mr-2"></i>Business Contest KING 実行委員会</h3>
+                     <div class="mb-4">
+                        <h4 class="font-medium text-blue-600">開発局員:</h4>
+                        <p class="text-gray-600">論理的思考力とAI活用を応用。既存コンテンツや業務フローのボトルネックを特定し、AI等で代替。</p>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-blue-600">TF (Task Force):</h4>
+                        <p class="text-gray-600">参加者の潜在能力を引き出し、実力を最大限発揮させるため、心理的安全性と思考フレームワークを強化。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 未来 -->
+        <section class="pb-8">
+            <h2 class="section-title" data-aos="fade-up">未来への展望</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="card p-6 text-center" data-aos="zoom-in" data-aos-duration="800">
+                    <div class="mb-4">
+                        <i class="fas fa-rocket text-5xl icon-blue"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">DXコンサルタント</h3>
+                    <p class="text-gray-600 leading-relaxed">ルーティン業務の無駄を削減し、日本人のプライベートな時間を取り戻すことに貢献。</p>
+                    <button class="gemini-button" data-career="DXコンサルタント">
+                        <i class="fas fa-magic"></i> ✨ 詳細を探る
+                    </button>
+                </div>
+                <div class="card p-6 text-center" data-aos="zoom-in" data-aos-duration="800" data-aos-delay="200">
+                     <div class="mb-4">
+                        <i class="fas fa-people-arrows text-5xl icon-blue"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">組織開発コンサルタント</h3>
+                    <p class="text-gray-600 leading-relaxed">人々の潜在能力を最大限に引き出す組織を、リーダーシップを持って開発する。</p>
+                    <button class="gemini-button" data-career="組織開発コンサルタント">
+                         <i class="fas fa-magic"></i> ✨ 詳細を探る
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center mt-16 py-8 border-t border-gray-300" data-aos="fade-up" data-aos-anchor-placement="top-bottom">
+            <p class="text-gray-500">© 2025 Your Name. All Rights Reserved.</p>
+             <p class="text-sm text-gray-400 mt-2">このページはAIによって生成されました。</p>
+        </footer>
+
+    </div>
+
+    <button id="scrollToTopBtn" title="トップへ戻る">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- Gemini Modal -->
+    <div id="geminiModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 id="modalTitle" class="text-2xl font-bold mb-4 text-gray-800"></h3>
+            <div id="modalBody" class="modal-body text-gray-700">
+                <!-- Content will be injected by JavaScript -->
+                 <div class="loader-container flex justify-center items-center h-40">
+                    <div class="loader"></div>
+                </div>
+            </div>
+             <p id="modalError" class="text-red-500 mt-3"></p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        // Initialize AOS library
+        AOS.init({
+            once: true, 
+            mirror: false, 
+        });
+
+        // Scroll to top button functionality
+        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+        window.onscroll = function() {
+            if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+                scrollToTopBtn.style.display = 'block';
+                setTimeout(() => {
+                    scrollToTopBtn.style.opacity = '1';
+                    scrollToTopBtn.style.visibility = 'visible';
+                }, 10);
+            } else {
+                scrollToTopBtn.style.opacity = '0';
+                setTimeout(() => {
+                    if (scrollToTopBtn.style.opacity === '0') {
+                         scrollToTopBtn.style.display = 'none';
+                         scrollToTopBtn.style.visibility = 'hidden';
+                    }
+                }, 300); 
+            }
+        };
+        scrollToTopBtn.onclick = function() {
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        };
+
+        // Gemini Modal Functionality
+        const modal = document.getElementById('geminiModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+        const modalError = document.getElementById('modalError');
+        const closeButton = modal.querySelector('.close-button');
+        const loaderElement = modal.querySelector('.loader-container');
+
+        const geminiButtons = document.querySelectorAll('.gemini-button');
+
+        geminiButtons.forEach(button => {
+            button.addEventListener('click', async function() {
+                const careerPath = this.dataset.career;
+                modalTitle.textContent = `${careerPath}について ✨`;
+                modalBody.innerHTML = ''; // Clear previous content
+                loaderElement.style.display = 'flex'; // Show loader
+                modalError.textContent = ''; // Clear previous error
+                modal.style.display = 'block';
+
+                // Basic prompt - can be made more sophisticated
+                const prompt = `${careerPath}というキャリアについて、以下の観点から詳しく教えてください。\n- 主な仕事内容\n- 必要とされる代表的なスキルや知識\n- 今後の市場動向や将来性\n- このキャリアを目指す上でのアドバイス\n簡潔かつ分かりやすく、箇条書きなどを活用して説明してください。`;
+
+                try {
+                    let chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                    const payload = { contents: chatHistory };
+                    // IMPORTANT: In a real application, the API key should be handled securely and not hardcoded.
+                    // For this environment, Canvas will provide the API key if left as an empty string.
+                    const apiKey = ""; 
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error('API Error Response:', errorData);
+                        throw new Error(`APIリクエストに失敗しました。ステータス: ${response.status}. ${errorData.error?.message || ''}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    loaderElement.style.display = 'none'; // Hide loader
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        
+                        let text = result.candidates[0].content.parts[0].text;
+                        // Simple Markdown-like formatting for readability
+                        text = text.replace(/\n\n/g, '<br><br>'); // Double newlines to paragraphs
+                        text = text.replace(/\n/g, '<br>'); // Single newlines to line breaks
+                        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
+                        text = text.replace(/\*(.*?)\*/g, '<em>$1</em>'); // Italics
+                        text = text.replace(/^- (.*)/gm, '<li>$1</li>'); // List items
+                        // Wrap list items in <ul> if any were created
+                        if (text.includes('<li>')) {
+                            text = `<ul>${text.replace(/<br><li>/g, '<li>').replace(/<\/li><br>/g, '</li>')}</ul>`.replace(/<\/li>(\s*<br\s*\/?>\s*)<ul>/g, '</li></ul><ul>');
+                        }
+
+
+                        modalBody.innerHTML = text;
+                    } else {
+                        console.error('Unexpected API response structure:', result);
+                        throw new Error('AIからの有効な回答が得られませんでした。');
+                    }
+
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    loaderElement.style.display = 'none'; // Hide loader on error
+                    modalError.textContent = `エラーが発生しました: ${error.message}`;
+                    modalBody.innerHTML = `<p>情報を取得できませんでした。しばらくしてからもう一度お試しください。</p>`;
+                }
+            });
+        });
+
+        closeButton.onclick = function() {
+            modal.style.display = 'none';
+            modalBody.innerHTML = ''; // Clear body
+            loaderElement.style.display = 'flex'; // Reset loader for next time
+            modalError.textContent = ''; // Clear error
+        }
+
+        // Close modal if user clicks outside of it
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+                modalBody.innerHTML = ''; // Clear body
+                loaderElement.style.display = 'flex'; // Reset loader for next time
+                modalError.textContent = ''; // Clear error
+            }
+        }
+    </script>
+</body>
+</html>
